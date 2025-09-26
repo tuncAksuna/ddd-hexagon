@@ -1,0 +1,25 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.project</groupId>
+        <artifactId>hexagonal</artifactId>
+        <version>v1</version>
+    </parent>
+    <artifactId>infrastructure</artifactId>
+    <packaging>pom</packaging>
+    <name>Archetype - infrastructure</name>
+    <url>https://maven.apache.org</url>
+    <modules>
+        <module>redis</module>
+        <module>apache-kafka</module>
+        <module>persistence</module>
+    </modules>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.project</groupId>
+            <artifactId>application</artifactId>
+        </dependency>
+    </dependencies>
+</project>

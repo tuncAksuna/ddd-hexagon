@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16.0-alpine
+    container_name: dddhexagonal
+    restart: always
+    environment:
+      POSTGRES_DB: dddhexagonal
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "needed specify !!!"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data/pgdata
+
+  redis-cache:
+    image: redis:7-alpine
+    container_name: ddd-hexagon-cache
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server 
+      --appendonly yes 
+      --requirepass 'needed specify !!!'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD","redis-cli","ping" ]
+      interval: 30s
+      timeout: 6s
+      retries: 5
+    networks: [ redis ]
+
+  redis-ui:
+    image: redis/redisinsight
+    container_name: ddd-hexagon-redisui
+    depends_on:
+      redis-cache:
+        condition: service_started
+    restart: always
+    volumes:
+      - redis-insight-data:/data
+    ports:
+      - "5540:5540"
+    networks: [ redis ]
+
+volumes:
+  redis-insight-data:
+  redis-data:
+  postgres:
+
+networks:
+  redis:
+    driver: bridge

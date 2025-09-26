@@ -1,0 +1,56 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.project</groupId>
+        <artifactId>hexagonal</artifactId>
+        <version>v1</version>
+    </parent>
+
+    <artifactId>container</artifactId>
+    <name>Archetype - container</name>
+    <url>https://maven.apache.org</url>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>com.project</groupId>
+            <artifactId>application</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.project</groupId>
+            <artifactId>domain</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.project</groupId>
+            <artifactId>persistence</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.project</groupId>
+            <artifactId>api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-docker-compose</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+
+
