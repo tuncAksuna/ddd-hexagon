@@ -2,7 +2,7 @@
 
 | Layer | Responsibility | Dependencies |
 |-------|----------------|--------------|
-| **Domain** | Business rules, entities, domain services | ❌ No external dependencies |
+| **Domain** | Business rules, entities, domain services | No external dependencies |
 | **Application** | Use cases, orchestration, ports definition | → Domain |
 | **Infrastructure** | External systems, databases, message queues | → Application → Domain |
 | **API** | REST endpoints, request/response handling | → Application → Domain |
@@ -12,7 +12,7 @@
 - **Infrastructure** → Depends on Application & Domain
 - **API** → Depends on Application & Domain
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Backend Framework
 - **Java 17**
@@ -34,7 +34,7 @@
 - **Lombok** - Boilerplate code reduction
 - **Docker & Docker Compose** - Containerization and orchestration
 
-### ✅ Ports & Adapters Implementation
+### Ports & Adapters Implementation
 
 **Input Ports (Use Cases):**
 - `GetProductListPort` - Retrieve all products
@@ -64,7 +64,7 @@
 - **Clean separation of concerns** across all layers
 
 
-## 🤝 Contributing
+## Contributing
 
 I welcome contributions! Please follow these steps:
 
@@ -75,14 +75,14 @@ I welcome contributions! Please follow these steps:
 5. **Open** a Pull Request
   
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **Robert C. Martin (Uncle Bob)** - Clean Architecture concept
 - **Alistair Cockburn** - Hexagonal Architecture pattern
 - **Lemi Orhan Ergin and Alican Akkuş** - https://www.youtube.com/watch?v=jx49C380EgI / 
 ---
 
-⭐ **If you found this project helpful, please give it a star!**
+**If you found this project helpful, please give it a star!**
 
 📫 **Contact**: [aksuna.tunc@gmail.com](mailto:aksuna.tunc@egmail.com)
 
