@@ -84,8 +84,8 @@ I welcome contributions! Please follow these steps:
 
 **If you found this project helpful, please give it a star!**
 
-📫 **Contact**: [aksuna.tunc@gmail.com](mailto:aksuna.tunc@egmail.com)
+ **Contact**: [aksuna.tunc@gmail.com](mailto:aksuna.tunc@egmail.com)
 
-🔗 **Connect with me**: [LinkedIn Profile](https://www.linkedin.com/in/cem-tunç-aksuna-012b31205)
+**Connect with me**: [LinkedIn Profile](https://www.linkedin.com/in/cem-tunç-aksuna-012b31205)
 
 <img width="1272" height="832" alt="arch" src="https://github.com/user-attachments/assets/afc9d609-21d7-48ff-9ee4-303f462e7839" />
