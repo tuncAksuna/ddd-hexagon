@@ -10,4 +10,5 @@
     <artifactId>shared-core</artifactId>
     <name>shared-core</name>
     <url>https://maven.apache.org</url>
+
 </project>

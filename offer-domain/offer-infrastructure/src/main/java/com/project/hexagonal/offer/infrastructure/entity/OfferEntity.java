@@ -21,21 +21,19 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @SuperBuilder
-@AttributeOverride(name = "id", column = @Column(name = "OFFER_ID"))
 public class OfferEntity extends AbstractBaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id",
             columnDefinition = "UUID",
             updatable = false,
             nullable = false)
     private UUID id;
 
-    @Column(name = "OFFER_CODE",
+    @Column(name = "CODE",
             unique = true,
             length = 50)
-    private String offerCode;
+    private String code;
 
     @Column(name = "TITLE",
             nullable = false)

@@ -7,15 +7,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class OfferApiMapper {
 
-    public CreateOfferCommand toCreateCommand (CreateOfferRequest req){
+    public CreateOfferCommand toCreateCommand(CreateOfferRequest req) {
         return CreateOfferCommand.builder()
                 .title(req.title())
                 .description(req.description())
-                .startDate(req.startDate())
                 .endDate(req.endDate())
-                .status(req.status())
                 .totalPrice(req.totalPrice())
                 .build();
     }
-
 }

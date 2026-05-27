@@ -20,9 +20,5 @@
             <groupId>com.project</groupId>
             <artifactId>shared-core</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.project</groupId>
-            <artifactId>shared-events</artifactId>
-        </dependency>
     </dependencies>
 </project>
