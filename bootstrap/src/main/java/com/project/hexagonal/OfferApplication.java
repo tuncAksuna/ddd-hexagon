@@ -15,7 +15,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @EnableCaching
 @ComponentScan(
-        includeFilters = {@ComponentScan.Filter(
+        includeFilters = {
+                @ComponentScan.Filter(
                 type = FilterType.ANNOTATION, value = {
                 DomainService.class,
                 DomainMapper.class,

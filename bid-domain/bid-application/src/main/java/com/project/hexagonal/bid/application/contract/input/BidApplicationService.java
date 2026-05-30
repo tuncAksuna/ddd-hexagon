@@ -9,4 +9,6 @@ public interface BidApplicationService {
     void applyBid(BidApplyCommand command);
 
     void cancelBidsForOffer(UUID offerId);
+
+    void accept(UUID bidId);
 }

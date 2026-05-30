@@ -5,6 +5,7 @@ import com.project.hexagonal.bid.core.valueobject.BidId;
 import com.project.hexagonal.bid.core.valueobject.BidStatus;
 import com.project.hexagonal.shared.core.entity.AggregateRoot;
 import com.project.hexagonal.shared.core.valueobject.Money;
+import com.project.hexagonal.shared.events.bid.BidAcceptedNotifyEvent;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -40,6 +41,7 @@ public class Bid extends AggregateRoot<BidId> {
         if (Objects.isNull(status)) {
             throw new BidDomainException("Cannot accept a bid without a status !");
         }
+        registerEvent(new BidAcceptedNotifyEvent(super.getId().getVal(), status.name(), Instant.now()));
         status = status.accept();
     }
 

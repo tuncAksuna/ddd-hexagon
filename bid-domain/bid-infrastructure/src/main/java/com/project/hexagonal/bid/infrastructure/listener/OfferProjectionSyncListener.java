@@ -3,6 +3,7 @@ package com.project.hexagonal.bid.infrastructure.listener;
 import com.project.hexagonal.bid.infrastructure.entity.OfferProjectionEntity;
 import com.project.hexagonal.bid.core.valueobject.OfferProjectionEnum;
 import com.project.hexagonal.bid.infrastructure.repository.OfferProjectionJpaRepository;
+import com.project.hexagonal.shared.events.offer.OfferCancelledEvent;
 import com.project.hexagonal.shared.events.offer.OfferClosedEvent;
 import com.project.hexagonal.shared.events.offer.OfferPublishedEvent;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,15 @@ public class OfferProjectionSyncListener {
     public void handleOfferClosed(OfferClosedEvent event) {
         repository.findById(event.offerId()).ifPresent(projection -> {
             projection.setStatus(OfferProjectionEnum.CLOSED);
+            repository.save(projection);
+        });
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void handleOfferCancelled(OfferCancelledEvent event) {
+        repository.findById(event.offerId()).ifPresent(projection -> {
+            projection.setStatus(OfferProjectionEnum.CANCELLED);
             repository.save(projection);
         });
     }

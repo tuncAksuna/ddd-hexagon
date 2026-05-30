@@ -39,6 +39,16 @@ public class BidDataMapper {
                 }).toList();
     }
 
+    public Bid toDomain(BidEntity entity) {
+        return Bid.builder()
+                .offerId(entity.getOfferId())
+                .bidderId(entity.getBidderId())
+                .totalPrice(new Money(entity.getTotalPrice()))
+                .status(entity.getStatus())
+                .submittedAt(entity.getSubmittedAt())
+                .build();
+    }
+
     public OfferSnapshot toSnapshotFromProjection(OfferProjectionEntity entity) {
         return new OfferSnapshot(entity.getId(), entity.getStatus().name());
     }

@@ -23,32 +23,31 @@ public class OfferApplicationServiceImpl implements OfferApplicationService {
     @Override
     @Transactional
     public void create(CreateOfferCommand command) {
-        Offer domainEntity = appMapper.toDomain(command);
-        domainEntity.validateAndInitialize();
-        persistencePort.save(domainEntity);
+        Offer offer = appMapper.toDomain(command);
+        offer.validateAndInitialize();
+        persistencePort.save(offer);
     }
 
     @Override
     @Transactional
     public void publish(UUID offerId) {
-        Offer domainEntity = persistencePort.findById(offerId);
-        domainEntity.processStatus();
-        persistencePort.save(domainEntity);
-        publishEvent(domainEntity);
+        Offer offer = persistencePort.findById(offerId);
+        offer.processStatus();
+        persistencePort.save(offer);
+        publishEvents(offer);
     }
 
     @Override
     @Transactional
     public void cancel(UUID offerId) {
-        Offer domainEntity = persistencePort.findById(offerId);
-        domainEntity.close();
-        persistencePort.save(domainEntity);
-        publishEvent(domainEntity);
+        Offer offer = persistencePort.findById(offerId);
+        offer.cancel();
+        persistencePort.save(offer);
+        publishEvents(offer);
     }
 
-    private void publishEvent(Offer domainEntity) {
-        domainEntity.getDomainEvents()
-                .forEach(eventPublisher::publishEvent);
-        domainEntity.clearDomainEvents();
+    private void publishEvents(Offer offer) {
+        offer.getDomainEvents().forEach(eventPublisher::publishEvent);
+        offer.clearDomainEvents();
     }
 }

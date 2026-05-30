@@ -28,4 +28,10 @@ public class BidRestController {
         return ResponseEntity.status(HttpStatus.CREATED).body("Bid applied successfully...");
     }
 
+    @PostMapping("/accept/{bidId}")
+    public ResponseEntity<String> accept(@PathVariable("bidId") UUID bidId) {
+        bidApplicationService.accept(bidId);
+        return ResponseEntity.status(HttpStatus.OK).body("Bid accepted successfully...");
+    }
+
 }

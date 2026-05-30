@@ -4,10 +4,11 @@ import com.project.hexagonal.offer.core.exception.OfferDomainException;
 import com.project.hexagonal.offer.core.valueobject.OfferId;
 import com.project.hexagonal.offer.core.valueobject.OfferStatus;
 import com.project.hexagonal.shared.core.entity.AggregateRoot;
-import com.project.hexagonal.shared.core.events.DomainEvent;
 import com.project.hexagonal.shared.core.valueobject.Money;
 import com.project.hexagonal.shared.events.offer.OfferClosedEvent;
 import com.project.hexagonal.shared.events.offer.OfferPublishedEvent;
+import com.project.hexagonal.shared.events.notification.OfferPublishedNotifyEvent;
+import com.project.hexagonal.shared.events.offer.OfferCancelledEvent;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -24,11 +25,7 @@ public class Offer extends AggregateRoot<OfferId> {
     private Instant startDate;
     private Instant endDate;
     private OfferStatus status;
-
     private Money totalPrice;
-
-    @Builder.Default
-    private final List<DomainEvent> domainEvents = new ArrayList<>();
 
     public void validateAndInitialize() {
         validate();
@@ -42,6 +39,7 @@ public class Offer extends AggregateRoot<OfferId> {
         validateInitial();
         validateTotalPrice();
         validateDescription();
+        validateStartDate();
         validateEndDate();
         validateTitle();
         validateCode();
@@ -62,14 +60,19 @@ public class Offer extends AggregateRoot<OfferId> {
         title = newTitle;
     }
 
+    public void cancel() {
+        if (OfferStatus.CANCELLED.equals(status)) return;
+        status = status.cancel();
+        registerEvent(new OfferCancelledEvent(super.getId().getVal(), Instant.now()));
+    }
+
     public void close() {
         if (OfferStatus.CLOSED.equals(status)) return;
         if (!(OfferStatus.PUBLISHED.equals(status) || OfferStatus.UPDATED.equals(status))) {
             throw new OfferDomainException("Cannot close an offer that is not published or updated!");
         }
         status = OfferStatus.CLOSED;
-        domainEvents.add(
-                new OfferClosedEvent(super.getId().getVal(), Instant.now()));
+        registerEvent(new OfferClosedEvent(super.getId().getVal(), Instant.now()));
     }
 
     public void processStatus() {
@@ -78,12 +81,9 @@ public class Offer extends AggregateRoot<OfferId> {
         }
         status = status.proceed();
         if (OfferStatus.PUBLISHED.equals(status)) {
-            domainEvents.add(new OfferPublishedEvent(super.getId().getVal(), Instant.now()));
+            registerEvent(new OfferPublishedEvent(super.getId().getVal(), Instant.now()));
+            registerEvent(new OfferPublishedNotifyEvent(super.getId().getVal(), Instant.now()));
         }
-    }
-
-    public void clearDomainEvents() {
-        domainEvents.clear();
     }
 
     private void validateCode() {
@@ -132,7 +132,4 @@ public class Offer extends AggregateRoot<OfferId> {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
     }
 
-    public List<DomainEvent> getDomainEvents() {
-        return Collections.unmodifiableList(domainEvents);
-    }
 }

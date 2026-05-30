@@ -8,7 +8,6 @@ import com.project.hexagonal.bid.application.dto.query.OfferSnapshot;
 import com.project.hexagonal.bid.application.mapper.BidAppMapper;
 import com.project.hexagonal.bid.core.exception.BidDomainException;
 import com.project.hexagonal.bid.core.model.Bid;
-import com.project.hexagonal.bid.core.valueobject.BidStatus;
 import com.project.hexagonal.shared.application.annotation.DomainService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,10 +38,16 @@ public class BidApplicationServiceImpl implements BidApplicationService {
     @Override
     @Transactional
     public void cancelBidsForOffer(UUID offerId) {
-        List<Bid> bids = persistencePort.findByOfferId(offerId).stream()
-                .filter(bid -> !BidStatus.CANCELLED.equals(bid.getStatus()))
-                .toList();
+        List<Bid> bids = persistencePort.findByOfferId(offerId).stream().toList();
         bids.forEach(Bid::cancel);
         persistencePort.saveAll(bids);
+    }
+
+    @Override
+    @Transactional
+    public void accept(UUID bidId) {
+        Bid bid = persistencePort.findById(bidId);
+        bid.accept();
+        persistencePort.save(bid);
     }
 }

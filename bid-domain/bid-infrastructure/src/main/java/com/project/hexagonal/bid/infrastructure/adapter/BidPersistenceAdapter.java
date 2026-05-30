@@ -1,6 +1,7 @@
 package com.project.hexagonal.bid.infrastructure.adapter;
 
 import com.project.hexagonal.bid.application.contract.output.BidPersistencePort;
+import com.project.hexagonal.bid.core.exception.BidDomainException;
 import com.project.hexagonal.bid.core.model.Bid;
 import com.project.hexagonal.bid.infrastructure.entity.BidEntity;
 import com.project.hexagonal.bid.infrastructure.mapper.BidDataMapper;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -27,6 +29,15 @@ public class BidPersistenceAdapter implements BidPersistencePort {
     @Override
     public void saveAll(List<Bid> bids) {
         repository.saveAll(bids.stream().map(dataMapper::toEntity).toList());
+    }
+
+    @Override
+    public Bid findById(UUID bidId) {
+        Optional<BidEntity> optBid = repository.findById(bidId);
+        if (optBid.isPresent()) {
+            return dataMapper.toDomain(optBid.get());
+        }
+        throw new BidDomainException("Bid not found !");
     }
 
     @Override

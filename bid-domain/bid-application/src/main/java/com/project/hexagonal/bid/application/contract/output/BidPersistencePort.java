@@ -11,5 +11,7 @@ public interface BidPersistencePort {
 
     void saveAll(List<Bid> bids);
 
+    Bid findById(UUID bidId);
+
     List<Bid> findByOfferId(UUID offerId);
 }
