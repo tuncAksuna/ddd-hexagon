@@ -2,13 +2,14 @@ package com.project.hexagonal.bid.application;
 
 import com.project.hexagonal.bid.application.contract.input.BidApplicationService;
 import com.project.hexagonal.bid.application.contract.output.BidPersistencePort;
-import com.project.hexagonal.bid.application.contract.output.OfferProjectionPort;
+import com.project.hexagonal.bid.application.contract.output.query.OfferProjectionPort;
 import com.project.hexagonal.bid.application.dto.command.BidApplyCommand;
 import com.project.hexagonal.bid.application.dto.query.OfferSnapshot;
 import com.project.hexagonal.bid.application.mapper.BidAppMapper;
 import com.project.hexagonal.bid.core.exception.BidDomainException;
 import com.project.hexagonal.bid.core.model.Bid;
 import com.project.hexagonal.shared.application.annotation.DomainService;
+import com.project.hexagonal.shared.application.event.DomainEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ public class BidApplicationServiceImpl implements BidApplicationService {
     private final BidPersistencePort persistencePort;
     private final OfferProjectionPort offerProjectionPort;
     private final BidAppMapper appMapper;
+    private final DomainEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -49,5 +51,11 @@ public class BidApplicationServiceImpl implements BidApplicationService {
         Bid bid = persistencePort.findById(bidId);
         bid.accept();
         persistencePort.save(bid);
+        publishEvents(bid);
+    }
+
+    private void publishEvents(Bid bid) {
+        bid.getDomainEvents().forEach(eventPublisher::publishEvent);
+        bid.clearDomainEvents();
     }
 }

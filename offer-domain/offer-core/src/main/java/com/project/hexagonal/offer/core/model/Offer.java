@@ -86,6 +86,16 @@ public class Offer extends AggregateRoot<OfferId> {
         }
     }
 
+    public void updateStatus() {
+        if (Objects.isNull(status)) {
+            throw new OfferDomainException("Cannot update an offer without a status !");
+        }
+        if (!OfferStatus.PUBLISHED.equals(status)) {
+            throw new OfferDomainException("Can only update a published offer!");
+        }
+        status = OfferStatus.UPDATED;
+    }
+
     private void validateCode() {
         if (Objects.nonNull(code)) {
             throw new OfferDomainException("Offer code must be null! Code is generated automatically by system...");

@@ -1,7 +1,7 @@
 package com.project.hexagonal.bid.infrastructure.entity;
 
 import com.project.hexagonal.bid.core.valueobject.BidStatus;
-import com.project.hexagonal.shared.infrastructure.entity.AbstractBaseEntity;
+import com.project.hexagonal.shared.infrastructure.persistence.entity.AbstractBaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

@@ -1,11 +1,11 @@
 package com.project.hexagonal.bid.infrastructure.adapter;
 
-import com.project.hexagonal.bid.application.contract.output.OfferProjectionPort;
+import com.project.hexagonal.bid.application.contract.output.query.OfferProjectionPort;
 import com.project.hexagonal.bid.application.dto.query.OfferSnapshot;
 import com.project.hexagonal.bid.infrastructure.entity.OfferProjectionEntity;
 import com.project.hexagonal.bid.infrastructure.mapper.BidDataMapper;
 import com.project.hexagonal.bid.infrastructure.repository.OfferProjectionJpaRepository;
-import com.project.hexagonal.shared.infrastructure.exception.SourceNotFoundException;
+import com.project.hexagonal.shared.core.exception.SourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

@@ -1,8 +1,8 @@
 package com.project.hexagonal.notification.infrastructure.listener;
 
 import com.project.hexagonal.notification.application.contract.input.NotificationApplicationService;
+import com.project.hexagonal.shared.core.exception.EventListenerException;
 import com.project.hexagonal.shared.events.notification.OfferPublishedNotifyEvent;
-import com.project.hexagonal.shared.infrastructure.exception.EventListenerException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -22,7 +22,7 @@ public class OfferPublishedNotifyEventListener {
             log.info("Sending notification for offer: {} at : {}", event.offerId(), event.occurredAt());
             notifyAppService.notify("Offer with id %s has been published at %s", event.offerId(), event.occurredAt());
         } catch (EventListenerException e) {
-            log.error("Error while sending notification for offer: {} at {}", event.offerId(), event.occurredAt(), e);
+            log.error("CRITICAL: Notification failed for offer {}. Manual review may be needed.", event.offerId(), e);
         }
     }
 }

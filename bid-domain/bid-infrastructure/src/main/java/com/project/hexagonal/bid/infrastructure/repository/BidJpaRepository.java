@@ -11,7 +11,7 @@ public interface BidJpaRepository extends JpaRepository<BidEntity, UUID> {
 
     @Query("""
             SELECT b FROM BID b
-            WHERE b.id = :offerId
+            WHERE b.offerId = :offerId
             AND b.status != "CANCELLED"
             """)
     List<BidEntity> findByOfferId(UUID offerId);

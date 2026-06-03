@@ -5,6 +5,7 @@ import com.project.hexagonal.bid.core.valueobject.BidId;
 import com.project.hexagonal.bid.core.valueobject.BidStatus;
 import com.project.hexagonal.shared.core.entity.AggregateRoot;
 import com.project.hexagonal.shared.core.valueobject.Money;
+import com.project.hexagonal.shared.events.bid.BidAcceptedEvent;
 import com.project.hexagonal.shared.events.bid.BidAcceptedNotifyEvent;
 import lombok.Builder;
 import lombok.Getter;
@@ -41,6 +42,7 @@ public class Bid extends AggregateRoot<BidId> {
         if (Objects.isNull(status)) {
             throw new BidDomainException("Cannot accept a bid without a status !");
         }
+        registerEvent(new BidAcceptedEvent(super.getId().getVal(), offerId, Instant.now()));
         registerEvent(new BidAcceptedNotifyEvent(super.getId().getVal(), status.name(), Instant.now()));
         status = status.accept();
     }
@@ -76,4 +78,15 @@ public class Bid extends AggregateRoot<BidId> {
         }
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof Bid bid)) return false;
+        if (!super.equals(o)) return false;
+        return Objects.equals(offerId, bid.offerId) && Objects.equals(bidderId, bid.bidderId) && Objects.equals(totalPrice, bid.totalPrice) && status == bid.status && Objects.equals(submittedAt, bid.submittedAt);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), offerId, bidderId, totalPrice, status, submittedAt);
+    }
 }

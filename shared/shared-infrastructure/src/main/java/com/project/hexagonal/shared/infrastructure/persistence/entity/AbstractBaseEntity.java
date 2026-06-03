@@ -1,4 +1,4 @@
-package com.project.hexagonal.shared.infrastructure.entity;
+package com.project.hexagonal.shared.infrastructure.persistence.entity;
 
 import jakarta.persistence.EntityListeners;
 import lombok.*;

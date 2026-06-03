@@ -1,4 +1,4 @@
-package com.project.hexagonal.shared.infrastructure.exception;
+package com.project.hexagonal.shared.core.exception;
 
 public class EventListenerException extends RuntimeException {
 

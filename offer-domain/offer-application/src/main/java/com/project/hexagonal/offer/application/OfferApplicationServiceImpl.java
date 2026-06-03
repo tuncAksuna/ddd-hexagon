@@ -46,6 +46,15 @@ public class OfferApplicationServiceImpl implements OfferApplicationService {
         publishEvents(offer);
     }
 
+    @Override
+    @Transactional
+    public void updateStatusOnBidAccepted(UUID offerId) {
+        Offer offer = persistencePort.findById(offerId);
+        offer.updateStatus();
+        persistencePort.save(offer);
+        publishEvents(offer);
+    }
+
     private void publishEvents(Offer offer) {
         offer.getDomainEvents().forEach(eventPublisher::publishEvent);
         offer.clearDomainEvents();

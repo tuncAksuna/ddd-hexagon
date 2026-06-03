@@ -1,14 +1,8 @@
 # Hexagonal Architecture — Modular Monolith
 
-A production-minded Java project built around strict hexagonal architecture and Domain-Driven Design principles. The goal was simple: build something that actually enforces the rules, not just talks about them. Every architectural decision here was made with one question in mind — *what happens when this needs to become a microservice?*
+A production-minded Java project built around strict hexagonal architecture and Domain-Driven Design principles. Started with a simple question: *what happens when this needs to become a microservice?* That single constraint shaped every architectural decision.
 
----
-
-## What's in here
-
-Two bounded contexts — `offer` and `bid` — living inside a single deployable Spring Boot application. They don't know about each other at the code level. They communicate only through domain events. The `shared` module provides the common contracts (base classes, event interfaces, custom annotations) without creating coupling between domains.
-
-The `notification` module is scaffolded but not yet implemented. That's next.
+Two bounded contexts — `offer` and `bid` — living in one Spring Boot application but never knowing about each other at the code level. They communicate exclusively through domain events. No direct dependencies, no database joins across domains. The `shared` module holds only the contracts (base classes, event definitions, annotations) needed by both.
 
 ---
 
@@ -16,27 +10,27 @@ The `notification` module is scaffolded but not yet implemented. That's next.
 
 ```
 hexagonal/
-├── bootstrap/                  ← single entry point, wires everything together
+├── bootstrap/                  ← single entry point, @ComponentScan wires the domains
 ├── shared/
 │   ├── shared-core             ← AggregateRoot, BaseEntity, Money, DomainEvent interface
-│   ├── shared-events           ← OfferClosedEvent, OfferPublishedEvent
+│   ├── shared-events           ← OfferClosedEvent, OfferPublishedEvent, BidAcceptedEvent
 │   ├── shared-application      ← @DomainService, @AppMapper, DomainEventPublisher port
-│   ├── shared-api              ← shared web/security/validation config
-│   └── shared-infrastructure   ← AbstractBaseEntity, @DomainMapper
+│   ├── shared-api              ← GlobalExceptionHandler, error responses, shared web config
+│   └── shared-infrastructure   ← AbstractBaseEntity, @DomainMapper, EventFailureLogAdapter
 ├── offer-domain/
 │   ├── offer-core              ← Offer aggregate, OfferStatus state machine
-│   ├── offer-application       ← use cases: create, publish, cancel
-│   ├── offer-api               ← REST controllers, request DTOs
-│   └── offer-infrastructure    ← JPA entities, mappers, adapters, event publisher
+│   ├── offer-application       ← use cases: create, publish, cancel, updateStatusOnBidAccepted
+│   ├── offer-api               ← REST controllers
+│   └── offer-infrastructure    ← JPA entities, mappers, adapters, OfferAcceptBidEventListener
 ├── bid-domain/
 │   ├── bid-core                ← Bid aggregate, BidStatus state machine
-│   ├── bid-application         ← use cases: applyBid, cancelBidsForOffer
-│   ├── bid-api                 ← REST controllers, event listeners
-│   └── bid-infrastructure      ← JPA entities, mappers, offer projection, adapters
-└── notification/               ← (in progress)
+│   ├── bid-application         ← use cases: applyBid, accept, cancelBidsForOffer
+│   ├── bid-api                 ← REST controllers, OfferClosedEventListener (driving adapter)
+│   └── bid-infrastructure      ← JPA entities, mappers, offer projection, OfferProjectionSyncListener
+└── notification/               ← scaffolded, not yet implemented
 ```
 
-The dependency rule: `infrastructure → application → core`. Nothing flows the other way. The `api` layer sits alongside `infrastructure` — both depend on `application`, neither knows about each other.
+The dependency rule: `infrastructure → application → core`. Nothing flows backward. The `api` layer (REST controllers) and `infrastructure` (JPA/DB) sit at the same level — both depend on `application`, neither on each other.
 
 ---
 
@@ -53,43 +47,52 @@ The dependency rule: `infrastructure → application → core`. Nothing flows th
 
 ### Rich domain model
 
-Business rules live inside the domain objects, not in service classes. `Offer` and `Bid` are aggregate roots that enforce their own invariants:
+Business rules live inside domain objects, not service classes. `Offer` and `Bid` are aggregate roots with no getters for state — only methods that *do things*. State changes are validated before they happen:
 
 ```java
-public void close() {
-    if (!(OfferStatus.PUBLISHED.equals(status) || OfferStatus.UPDATED.equals(status))) {
-        throw new OfferDomainException("Cannot close an offer that is not published or updated!");
-    }
-    status = OfferStatus.CLOSED;
-    domainEvents.add(new OfferClosedEvent(super.getId().getVal(), Instant.now()));
+public void cancel() {
+    if (OfferStatus.CANCELLED.equals(status)) return;
+    status = status.cancel();
+    registerEvent(new OfferCancelledEvent(super.getId().getVal(), Instant.now()));
 }
 ```
 
-State transitions go through state machine enums (`OfferStatus`, `BidStatus`) with abstract methods per state. Terminal states throw `IllegalStateException` — no way to accidentally transition out of CLOSED or CANCELLED.
+State machine enums (`OfferStatus`, `BidStatus`) have abstract methods per state. Try to transition CLOSED → PUBLISHED? The enum throws `IllegalStateException`. No way to build an invalid state by accident.
 
-### Cross-domain communication
+Event registration happens inside the domain method that caused the state change. This way, code that calls `cancel()` doesn't have to remember to fire an event — it's built into the domain rule.
 
-`bid-domain` needs to know if an offer is published before accepting a bid. But it can't import `offer-domain` code. The solution: `bid-infrastructure` maintains a local `offer_projection` table (just `id` and `status`), kept current by listening to offer domain events.
+### Cross-domain communication without coupling
+
+`bid-domain` needs to check if an offer is published, but it can't import `offer-domain` code. We solve this with **local projection**: `bid-infrastructure` keeps its own `offer_projection` table (just `id` and `status`), updated whenever offer events fire.
 
 ```
 OfferApplicationServiceImpl.publish()
-  → Offer.processStatus() emits OfferPublishedEvent
-    → OfferProjectionSyncListener writes to offer_projection (bid's own DB table)
-
+  → Offer.publishStatus() registers OfferPublishedEvent
+  → publishEvents() dispatches to all listeners
+    → OfferProjectionSyncListener receives it
+      → saves/updates offer_projection in bid's database
+                                   
 BidApplicationServiceImpl.applyBid()
-  → reads from offer_projection via OfferProjectionPort
-  → if not PUBLISHED → BidDomainException
+  → checks offer_projection (doesn't cross domain boundaries)
+  → if PUBLISHED, accepts the bid
 ```
 
-When `offer-domain` fires `OfferClosedEvent`, two things happen independently:
-- `OfferProjectionSyncListener` updates the projection to CLOSED
-- `OfferClosedEventListener` calls `cancelBidsForOffer()`
+No cross-database queries. Each domain owns its data. Events are the only communication channel. This scales when you split into separate services later — the event contract is already in place.
 
-Both are `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)` — they run after the offer transaction commits, in their own transactions.
+### Event flow and error handling
 
-### Keeping Spring out of the domain and application layers
+Events are published **after** aggregate state is persisted. That way:
+- If offer publishes successfully, the database commit is guaranteed
+- Listener failures don't roll back the offer (eventual consistency)
+- Cross-domain consistency arrives "eventually" — listeners fix it on retry
 
-`@DomainService`, `@AppMapper`, and `@DomainMapper` are plain Java annotations with no Spring imports. The `bootstrap` module registers them via `@ComponentScan` with `includeFilters`:
+This is how `bid-domain` can cancel bids when an offer closes: even if the bid-cancel listener crashes temporarily, the offer is safely closed in its own database.
+
+Listener errors are logged to `EventFailureLog` (a DLQ table), marked `PENDING` for manual review. Critical errors (bid cancellation, offer status updates) generate alerts. Non-critical errors (notifications, projection sync) log only — the system self-heals when the listener recovers.
+
+### Keeping Spring out of domain and application layers
+
+`@DomainService`, `@AppMapper`, `@DomainMapper` are plain Java annotations. No Spring imports. The bootstrap module finds them via `@ComponentScan`:
 
 ```java
 @ComponentScan(includeFilters = @Filter(
@@ -100,36 +103,58 @@ Both are `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_
 public class OfferApplication { ... }
 ```
 
-Same story for event publishing. The application layer declares a `DomainEventPublisher` port (pure Java interface). Infrastructure provides the Spring implementation:
+Event publishing works the same way. The application layer declares a `DomainEventPublisher` port (pure Java interface, lives in `shared-application`). Infrastructure implements it with Spring's `ApplicationEventPublisher`:
 
 ```java
-// shared-application — no Spring import
+// shared-application — pure Java
 public interface DomainEventPublisher {
-    void publish(DomainEvent event);
+    void publishEvent(DomainEvent event);
 }
 
 // offer-infrastructure — Spring lives here
 @Component
 public class SpringDomainEventPublisher implements DomainEventPublisher {
-    private final ApplicationEventPublisher publisher;
-    public void publish(DomainEvent event) { publisher.publishEvent(event); }
+    @Autowired private ApplicationEventPublisher publisher;
+    public void publishEvent(DomainEvent event) { 
+        publisher.publishEvent(event); 
+    }
 }
 ```
 
-### The ID problem with @Builder
+This way, if you need to swap Spring events for RabbitMQ later, you only change the infrastructure implementation. Domain and application layers don't care.
 
-Aggregate IDs come from `BaseEntity<ID>` which `@Builder` doesn't see (inherited field). So after building from a JPA entity, `setId()` is called explicitly:
+### The @Builder + inherited ID problem
+
+`AggregateRoot` has a protected `id` field inherited from `BaseEntity`. Lombok's `@Builder` doesn't see inherited fields, so after building an aggregate from JPA data, we call `setId()` explicitly:
 
 ```java
 Offer offer = Offer.builder()
         .title(entity.getTitle())
-        // ... other fields
         .build();
-offer.setId(new OfferId(entity.getId()));  // must be separate
-return offer;
+offer.setId(new OfferId(entity.getId()));  // separate call
 ```
 
-Skipping this would cause a NPE the moment the domain tries to publish an event with its own ID. Took a while to catch.
+Skip this and you get a NPE when the aggregate tries to include its ID in an event. We learned this the hard way. The domain event processing path caught it, but it took a bit to track down where the null came from.
+
+### The ID management in AggregateRoot
+
+All domain events and queries need the aggregate ID, so `AggregateRoot` manages event registration centrally:
+
+```java
+public abstract class AggregateRoot<ID> extends BaseEntity<ID> {
+    private final List<DomainEvent> domainEvents = new ArrayList<>();
+    
+    protected void registerEvent(DomainEvent event) {
+        domainEvents.add(event);
+    }
+    
+    public List<DomainEvent> getDomainEvents() {
+        return Collections.unmodifiableList(domainEvents);
+    }
+}
+```
+
+Aggregates never directly manage event lists. They call `registerEvent()`. The application service calls `publishEvents()` after persist. This makes the pattern consistent across all domains — no duplicate list management code.
 
 ---
 
@@ -137,34 +162,65 @@ Skipping this would cause a NPE the moment the domain tries to publish an event 
 
 **Create and publish an offer:**
 ```
-POST /api/offers          → create (status: DRAFT)
-PUT  /api/offers/{id}     → publish (DRAFT → PUBLISHED, fires OfferPublishedEvent)
+POST /api/offers              → Offer.validateAndInitialize() → DRAFT, saved
+POST /api/offers/{id}/publish → Offer.processStatus() → PUBLISHED
+                              → fires OfferPublishedEvent + OfferPublishedNotifyEvent
+                              → listeners update offer_projection, send notifications
 ```
 
 **Apply a bid:**
 ```
-POST /api/bids/apply/{offerId}   → checks offer_projection (must be PUBLISHED)
-                                 → saves Bid with status SUBMITTED
+POST /api/bids/apply/{offerId}
+  → check offer_projection (must be PUBLISHED)
+  → Bid.validateAndInitialize() → SUBMITTED, saved
+  → OfferProjectionSyncListener ensures projection exists
 ```
 
-**Cancel an offer:**
+**Accept a bid:**
 ```
-DELETE /api/offers/{id}   → close() → CLOSED, fires OfferClosedEvent
-                          → OfferClosedEventListener → cancelBidsForOffer()
-                          → all non-CANCELLED bids transition to CANCELLED
+POST /api/bids/{bidId}/accept
+  → Bid.accept() → ACCEPTED
+  → fires BidAcceptedEvent + BidAcceptedNotifyEvent
+  → OfferAcceptBidEventListener receives BidAcceptedEvent
+  → Offer.updateStatus() → PUBLISHED → UPDATED
 ```
+
+**Cancel an offer (closes all bids):**
+```
+DELETE /api/offers/{id}
+  → Offer.cancel() → CANCELLED
+  → fires OfferCancelledEvent
+  → listeners update offer_projection + call cancelBidsForOffer()
+  → all non-CANCELLED bids transition to CANCELLED, saved together
+```
+
+All event listeners run `@TransactionalEventListener(AFTER_COMMIT)` in their own transactions (`REQUIRES_NEW`). If a listener fails, it's logged to `event_failure_log` for manual review — the offer/bid state change is already persisted and safe.
 
 ---
 
-## What's coming
+## Error handling and observability
 
-The current event flow is in-process Spring events — solid for a monolith, but not resilient against partial failures. The next phase adds:
+Failed listeners are logged to `event_failure_log` table with full stack traces. Status is `PENDING` — you can review, fix the underlying issue, and the listener will retry automatically when the aggregate is modified again.
 
-**Outbox Pattern** — instead of publishing events directly, the event is written to an `offer_outbox` / `bid_outbox` table within the same transaction as the domain state change. A scheduler picks up `PENDING` events and dispatches them, then marks them `PROCESSED`.
+The `GlobalExceptionHandler` converts domain exceptions to HTTP responses:
+- `DomainException` (business rule violations) → **422 Unprocessable Entity**
+- `SourceNotFoundException` → **404 Not Found**
+- Validation failures → **400 Bad Request**
+- Everything else → **500 Internal Server Error**
 
-**Inbox / Idempotency** — on the consumer side, incoming event IDs get recorded so the same event can't be processed twice even if it's delivered more than once.
+This way clients know whether they sent bad data (4xx) or something broke on the server (5xx).
 
-This is the missing piece before this architecture is actually production-safe. The domain event contracts are already designed with `eventId` support in mind.
+---
+
+## What's next
+
+The current event flow is in-process Spring events with a manual DLQ fallback — solid for a monolith, resilient enough for production use if you watch the logs. The next phase (when you scale to microservices) adds:
+
+**Outbox Pattern** — events get written to the same database transaction as the aggregate state change (`offer_outbox` / `bid_outbox` tables). A scheduler polls for `PENDING` events and dispatches them to message queues, then marks them `PROCESSED`. This guarantees no event is ever lost, even if the application crashes mid-publish.
+
+**Inbox / Idempotency** — on the consumer side, listeners record the event ID they processed. If the same event is delivered twice (network hiccup), the listener skips it — your operations stay idempotent.
+
+This is the final piece before splitting into separate services. The domain event contracts are already architected for it — they just need IDs.
 
 ---
 

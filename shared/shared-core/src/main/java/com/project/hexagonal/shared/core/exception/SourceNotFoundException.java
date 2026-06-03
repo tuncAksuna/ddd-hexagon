@@ -1,4 +1,4 @@
-package com.project.hexagonal.shared.infrastructure.exception;
+package com.project.hexagonal.shared.core.exception;
 
 public class SourceNotFoundException extends RuntimeException {
     public SourceNotFoundException(String message) {

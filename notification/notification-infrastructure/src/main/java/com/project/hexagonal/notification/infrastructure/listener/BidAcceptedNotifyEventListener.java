@@ -2,7 +2,7 @@ package com.project.hexagonal.notification.infrastructure.listener;
 
 import com.project.hexagonal.notification.application.contract.input.NotificationApplicationService;
 import com.project.hexagonal.shared.events.bid.BidAcceptedNotifyEvent;
-import com.project.hexagonal.shared.infrastructure.exception.EventListenerException;
+import com.project.hexagonal.shared.core.exception.EventListenerException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

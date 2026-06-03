@@ -11,4 +11,6 @@ public interface OfferApplicationService {
     void publish(UUID offerId);
 
     void cancel(UUID offerId);
+
+    void updateStatusOnBidAccepted(UUID offerId);
 }
