@@ -6,6 +6,7 @@ import com.project.hexagonal.offer.application.dto.command.CreateOfferCommand;
 import com.project.hexagonal.offer.application.mapper.OfferAppMapper;
 import com.project.hexagonal.offer.core.model.Offer;
 import com.project.hexagonal.shared.application.annotation.DomainService;
+import com.project.hexagonal.shared.application.contract.output.OutboxPersistencePort;
 import com.project.hexagonal.shared.application.event.DomainEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ public class OfferApplicationServiceImpl implements OfferApplicationService {
     private final OfferAppMapper appMapper;
     private final OfferPersistencePort persistencePort;
     private final DomainEventPublisher eventPublisher;
+    private final OutboxPersistencePort outboxPersistencePort;
 
     @Override
     @Transactional
@@ -34,7 +36,7 @@ public class OfferApplicationServiceImpl implements OfferApplicationService {
         Offer offer = persistencePort.findById(offerId);
         offer.processStatus();
         persistencePort.save(offer);
-        publishEvents(offer);
+        publishEventsAndInsertOutbox(offer);
     }
 
     @Override
@@ -43,7 +45,7 @@ public class OfferApplicationServiceImpl implements OfferApplicationService {
         Offer offer = persistencePort.findById(offerId);
         offer.cancel();
         persistencePort.save(offer);
-        publishEvents(offer);
+        publishEventsAndInsertOutbox(offer);
     }
 
     @Override
@@ -52,11 +54,14 @@ public class OfferApplicationServiceImpl implements OfferApplicationService {
         Offer offer = persistencePort.findById(offerId);
         offer.updateStatus();
         persistencePort.save(offer);
-        publishEvents(offer);
+        publishEventsAndInsertOutbox(offer);
     }
 
-    private void publishEvents(Offer offer) {
-        offer.getDomainEvents().forEach(eventPublisher::publishEvent);
+    private void publishEventsAndInsertOutbox(Offer offer) {
+        offer.getDomainEvents().forEach(event -> {
+            // Write to outbox (guaranteed delivery)
+            outboxPersistencePort.save("Offer", offer.getId().getVal(), event);
+        });
         offer.clearDomainEvents();
     }
 }

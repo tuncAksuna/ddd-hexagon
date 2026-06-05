@@ -9,6 +9,7 @@ import com.project.hexagonal.bid.application.mapper.BidAppMapper;
 import com.project.hexagonal.bid.core.exception.BidDomainException;
 import com.project.hexagonal.bid.core.model.Bid;
 import com.project.hexagonal.shared.application.annotation.DomainService;
+import com.project.hexagonal.shared.application.contract.output.OutboxPersistencePort;
 import com.project.hexagonal.shared.application.event.DomainEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ public class BidApplicationServiceImpl implements BidApplicationService {
     private final OfferProjectionPort offerProjectionPort;
     private final BidAppMapper appMapper;
     private final DomainEventPublisher eventPublisher;
+    private final OutboxPersistencePort outboxPersistencePort;
 
     @Override
     @Transactional
@@ -51,11 +53,14 @@ public class BidApplicationServiceImpl implements BidApplicationService {
         Bid bid = persistencePort.findById(bidId);
         bid.accept();
         persistencePort.save(bid);
-        publishEvents(bid);
+        publishEventsAndInsertOutbox(bid);
     }
 
-    private void publishEvents(Bid bid) {
-        bid.getDomainEvents().forEach(eventPublisher::publishEvent);
+    private void publishEventsAndInsertOutbox(Bid bid) {
+        bid.getDomainEvents().forEach(event -> {
+            // Write to outbox (guaranteed delivery)
+            outboxPersistencePort.save("Bid", bid.getId().getVal(), event);
+        });
         bid.clearDomainEvents();
     }
 }

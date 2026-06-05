@@ -53,9 +53,15 @@ Business rules live inside domain objects, not service classes. `Offer` and `Bid
 public void cancel() {
     if (OfferStatus.CANCELLED.equals(status)) return;
     status = status.cancel();
-    registerEvent(new OfferCancelledEvent(super.getId().getVal(), Instant.now()));
+    registerEvent(new OfferCancelledEvent(
+        UUID.randomUUID(),           // unique event ID for idempotency
+        super.getId().getVal(),      // aggregate ID
+        Instant.now()
+    ));
 }
 ```
+
+Each domain event gets a unique UUID at creation time. This ID is used later for idempotency — if the same event is delivered twice (network retry, outbox re-processing), listeners skip duplicates using their inbox record.
 
 State machine enums (`OfferStatus`, `BidStatus`) have abstract methods per state. Try to transition CLOSED → PUBLISHED? The enum throws `IllegalStateException`. No way to build an invalid state by accident.
 
@@ -212,15 +218,57 @@ This way clients know whether they sent bad data (4xx) or something broke on the
 
 ---
 
-## What's next
+## Event Durability & Idempotency — Outbox + Inbox Pattern
 
-The current event flow is in-process Spring events with a manual DLQ fallback — solid for a monolith, resilient enough for production use if you watch the logs. The next phase (when you scale to microservices) adds:
+This system implements the **Outbox Pattern** for guaranteed event delivery and **Inbox Pattern** for idempotency:
 
-**Outbox Pattern** — events get written to the same database transaction as the aggregate state change (`offer_outbox` / `bid_outbox` tables). A scheduler polls for `PENDING` events and dispatches them to message queues, then marks them `PROCESSED`. This guarantees no event is ever lost, even if the application crashes mid-publish.
+### Outbox Pattern (Write → Scheduler → Listeners)
 
-**Inbox / Idempotency** — on the consumer side, listeners record the event ID they processed. If the same event is delivered twice (network hiccup), the listener skips it — your operations stay idempotent.
+```
+Aggregate state change + Event → Same @Transactional block
+  ↓
+ApplicationService.publishEventsAndInsertOutbox()
+  ├─ outboxPersistencePort.save("Offer", id, event)  // ← Same DB transaction
+  └─ Event persisted with status=PENDING
+      ↓
+OutboxScheduler.publishPendingEvents() // every 2 seconds
+  ├─ Load PENDING events in batches (max 50)
+  ├─ Deserialize → republish to Spring listeners
+  ├─ Mark status=PUBLISHED
+  └─ Listeners process @TransactionalEventListener(AFTER_COMMIT)
+      ↓
+Listener success:
+  ├─ inbox.markEventSuccess() → inbox.processed=true
+  └─ outboxPort.markProcessedByEventId() → outbox.status=PROCESSED
+```
 
-This is the final piece before splitting into separate services. The domain event contracts are already architected for it — they just need IDs.
+**Guarantees:**
+- ✅ **Event durability:** Persisted to database same transaction as state change
+- ✅ **No event loss:** Scheduler retries PENDING events (max 3 retries before DLQ)
+- ✅ **Idempotency:** Event ID tracked in inbox — duplicate events skipped
+- ✅ **Eventual consistency:** Cross-domain listeners update projections asynchronously
+
+### Outbox Tables
+
+```
+outbox table:
+  - status: PENDING → PUBLISHED → PROCESSED
+  - retryCount: 0-3, then moved to dead_letter_log
+  - eventId: UNIQUE (prevents duplicates)
+  
+inbox table:
+  - (event_id, consumer_type): UNIQUE
+  - processed: boolean (marks idempotent completion)
+  - processed_at: timestamp (tracked for cleanup)
+  
+dead_letter_log table:
+  - status: PENDING (manual review) → RESOLVED → ARCHIVED
+  - Max retries exceeded events logged here
+```
+
+**Automatic Cleanup:** InboxCleanupScheduler runs nightly (02:00 UTC) and deletes processed events older than 30 days. This prevents unbounded growth while maintaining idempotency guarantees.
+
+This is production-ready for microservice migration — the event contracts and scheduler-based publishing already work with message queues (Kafka, RabbitMQ) by swapping the publishing mechanism in infrastructure.
 
 ---
 

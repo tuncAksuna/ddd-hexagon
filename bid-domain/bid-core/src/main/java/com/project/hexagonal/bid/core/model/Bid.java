@@ -42,8 +42,10 @@ public class Bid extends AggregateRoot<BidId> {
         if (Objects.isNull(status)) {
             throw new BidDomainException("Cannot accept a bid without a status !");
         }
-        registerEvent(new BidAcceptedEvent(super.getId().getVal(), offerId, Instant.now()));
-        registerEvent(new BidAcceptedNotifyEvent(super.getId().getVal(), status.name(), Instant.now()));
+        registerEvent(new BidAcceptedEvent(UUID.randomUUID(),
+                super.getId().getVal(), offerId, Instant.now()));
+        registerEvent(new BidAcceptedNotifyEvent(UUID.randomUUID(),
+                super.getId().getVal(), status.name(), Instant.now()));
         status = status.accept();
     }
 
