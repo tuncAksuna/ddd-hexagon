@@ -53,7 +53,6 @@ public class OfferProjectionSyncListener {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleOfferClosed(OfferClosedEvent event) {
         try {
             if (inboxAdapter.isEventAlreadyProcessed(event.getEventId(), CONSUMER)) {
