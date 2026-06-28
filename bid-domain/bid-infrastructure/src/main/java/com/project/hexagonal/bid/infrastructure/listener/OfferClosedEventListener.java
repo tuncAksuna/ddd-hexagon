@@ -29,7 +29,6 @@ public class OfferClosedEventListener {
     private final EventFailureLogAdapter failureLog;
     private final OutboxPersistencePort outboxPersistencePort;
 
-    @Transactional
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleClosed(OfferClosedEvent event) {
         try {
@@ -53,7 +52,6 @@ public class OfferClosedEventListener {
         }
     }
 
-    @Transactional
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleCancelled(OfferCancelledEvent event) {
         try {
