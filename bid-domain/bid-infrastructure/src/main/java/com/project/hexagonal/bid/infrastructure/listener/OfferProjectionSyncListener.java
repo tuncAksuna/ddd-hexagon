@@ -30,7 +30,6 @@ public class OfferProjectionSyncListener {
     private final OutboxPersistencePort outboxPersistencePort;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleOfferPublished(OfferPublishedEvent event) {
         try {
             if (inboxAdapter.isEventAlreadyProcessed(event.getEventId(), CONSUMER)) {
